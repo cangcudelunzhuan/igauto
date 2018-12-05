@@ -1,0 +1,291 @@
+<template>
+  <div class="car-control">
+
+    <!-- 地图展示 -->
+    <div v-if="show">
+      <map-gd ref="map"></map-gd>
+    </div>
+    <div v-else>
+      <heat-map></heat-map>
+    </div>
+
+    <!-- 地图切换条 -->
+    <div class="switch">
+      <el-row>
+        <el-col :span="12">
+          <div class="switch-heat" @click="showHeat">
+            <img src="static/img/relitu.png" alt="">
+          </div>
+        </el-col>
+        <el-col :span="12">
+          <div class="switch-aggregation" @click="showAggregation">
+            <img src="static/img/ditu.png" alt="">
+          </div>
+        </el-col>
+      </el-row>
+    </div>
+
+  </div>
+</template>
+
+<script>
+import HeatMap from "@/components/maps/heatMap.vue";
+import MapGd from "@/components/maps/map.vue";
+import {
+  getToken,
+  setToken,
+  removeToken,
+  getUserId,
+  setUserId,
+  removeUserId
+} from "@/utils/auth";
+import {
+  getQueryPlateOrVin,
+  getQueryCarRealByVins
+} from "@/api/realTimeMonitoring";
+
+export default {
+  name: "carControl",
+  components: { MapGd, HeatMap },
+  data() {
+    return {
+      show: true,
+      // searchResult:"",
+      // 所有,熄火,充电熄火,充电行驶，行驶,异常,故障熄火，故障行驶
+      arrAll: [],
+      arrFlameout: [],
+      arrChargeFlameout: [],
+      arrChargeTravel: [],
+      arrTravel: [],
+      arrAbnormal: [],
+      arrFaultTravel: [],
+      arrFaultFlameout: []
+    };
+  },
+  deactivated() {
+    clearInterval(this.timer);
+  },
+  activated() {
+    this.getData();
+    clearInterval(this.timer);
+    this.timer = setInterval(() => {
+      this.getData();
+    }, 30000);
+  },
+  created() {
+    this.getData();
+    clearInterval(this.timer);
+    this.timer = setInterval(() => {
+      this.getData();
+    }, 30000);
+  },
+  methods: {
+    showHeat() {
+      this.show = false;
+    },
+    showAggregation() {
+      this.show = true;
+    },
+    getData() {
+      this.arrFlameout = []; //熄火    0
+      this.arrChargeFlameout = []; //充电熄火  3
+      this.arrChargeTravel = []; //充电行驶 4
+      this.arrTravel = []; //行驶 1
+      this.arrAbnormal = []; //异常 2
+      this.arrFaultTravel = []; //故障行驶 5
+      this.arrFaultFlameout = []; //故障熄火 6
+
+      getQueryCarRealByVins("all", getUserId())
+        .then(res => {
+          if (!res.results) {
+            return false;
+          }
+          let data = res.results;
+          for (let i = 0, len = data.length; i < len; i++) {
+            if (
+              data[i] !== null &&
+              data[i].carStatus !== null &&
+              data[i].carBase !== null &&
+              data[i].carRealDataVo !== null &&
+              data[i].carType !== null
+            ) {
+              if (data[i].carStatus.travelStatus == 2) {
+                this.arrAbnormal.push({
+                  lnglat: [
+                    data[i].carRealDataVo.longitude,
+                    data[i].carRealDataVo.latitude
+                  ],
+                  vin: data[i].vin,
+                  plate: data[i].carBase.plate,
+                  type: data[i].carType.carTypeName,
+                  soc: data[i].carRealDataVo.soc,
+                  speed: data[i].carRealDataVo.speed,
+                  vehicleState: 2,
+                  totalMileage: data[i].carRealDataVo.totalMileage,
+                  carSeatNum: data[i].carType.carSeatNum,
+                  updateTime: data[i].carRealDataVo.samplingTime
+                });
+                //是否为故障
+              } else if (data[i].carStatus.isBadStatus == 1) {
+                if (data[i].carStatus.travelStatus == 1) {
+                  this.arrFaultFlameout.push({
+                    lnglat: [
+                      data[i].carRealDataVo.longitude,
+                      data[i].carRealDataVo.latitude
+                    ],
+                    vin: data[i].vin,
+                    plate: data[i].carBase.plate,
+                    type: data[i].carType.carTypeName,
+                    soc: data[i].carRealDataVo.soc,
+                    speed: data[i].carRealDataVo.speed,
+                    vehicleState: 6,
+                    totalMileage: data[i].carRealDataVo.totalMileage,
+                    carSeatNum: data[i].carType.carSeatNum,
+                    updateTime: data[i].carRealDataVo.samplingTime
+                  });
+                } else if (data[i].carStatus.travelStatus == 0) {
+                  this.arrFaultTravel.push({
+                    lnglat: [
+                      data[i].carRealDataVo.longitude,
+                      data[i].carRealDataVo.latitude
+                    ],
+                    vin: data[i].vin,
+                    plate: data[i].carBase.plate,
+                    type: data[i].carType.carTypeName,
+                    soc: data[i].carRealDataVo.soc,
+                    speed: data[i].carRealDataVo.speed,
+                    vehicleState: 5,
+                    totalMileage: data[i].carRealDataVo.totalMileage,
+                    carSeatNum: data[i].carType.carSeatNum,
+                    updateTime: data[i].carRealDataVo.samplingTime
+                  });
+                }
+                //是否为充电
+              } else if (data[i].carStatus.chargingStatus == 1) {
+                if (data[i].carStatus.travelStatus == 1) {
+                  this.arrChargeFlameout.push({
+                    lnglat: [
+                      data[i].carRealDataVo.longitude,
+                      data[i].carRealDataVo.latitude
+                    ],
+                    vin: data[i].vin,
+                    plate: data[i].carBase.plate,
+                    type: data[i].carType.carTypeName,
+                    soc: data[i].carRealDataVo.soc,
+                    speed: data[i].carRealDataVo.speed,
+                    vehicleState: 3,
+                    totalMileage: data[i].carRealDataVo.totalMileage,
+                    carSeatNum: data[i].carType.carSeatNum,
+                    updateTime: data[i].carRealDataVo.samplingTime
+                  });
+                } else if (data[i].carStatus.travelStatus == 0) {
+                  this.arrChargeTravel.push({
+                    lnglat: [
+                      data[i].carRealDataVo.longitude,
+                      data[i].carRealDataVo.latitude
+                    ],
+                    vin: data[i].vin,
+                    plate: data[i].carBase.plate,
+                    type: data[i].carType.carTypeName,
+                    soc: data[i].carRealDataVo.soc,
+                    speed: data[i].carRealDataVo.speed,
+                    vehicleState: 4,
+                    totalMileage: data[i].carRealDataVo.totalMileage,
+                    carSeatNum: data[i].carType.carSeatNum,
+                    updateTime: data[i].carRealDataVo.samplingTime
+                  });
+                }
+              } else if (
+                data[i].carStatus.chargingStatus == 0 &&
+                data[i].carStatus.isBadStatus == 0
+              ) {
+                if (data[i].carStatus.travelStatus == 1) {
+                  this.arrFlameout.push({
+                    lnglat: [
+                      data[i].carRealDataVo.longitude,
+                      data[i].carRealDataVo.latitude
+                    ],
+                    vin: data[i].vin,
+                    plate: data[i].carBase.plate,
+                    type: data[i].carType.carTypeName,
+                    soc: data[i].carRealDataVo.soc,
+                    speed: data[i].carRealDataVo.speed,
+                    vehicleState: 0,
+                    totalMileage: data[i].carRealDataVo.totalMileage,
+                    carSeatNum: data[i].carType.carSeatNum,
+                    updateTime: data[i].carRealDataVo.samplingTime
+                  });
+                } else if (data[i].carStatus.travelStatus == 0) {
+                  this.arrTravel.push({
+                    lnglat: [
+                      data[i].carRealDataVo.longitude,
+                      data[i].carRealDataVo.latitude
+                    ],
+                    vin: data[i].vin,
+                    plate: data[i].carBase.plate,
+                    type: data[i].carType.carTypeName,
+                    soc: data[i].carRealDataVo.soc,
+                    speed: data[i].carRealDataVo.speed,
+                    vehicleState: 1,
+                    totalMileage: data[i].carRealDataVo.totalMileage,
+                    carSeatNum: data[i].carType.carSeatNum,
+                    updateTime: data[i].carRealDataVo.samplingTime
+                  });
+                }
+              }
+            } else {
+              continue;
+            }
+          }
+
+          this.arrAll = []; // 7
+          this.arrAll = this.arrAll.concat(
+            this.arrFlameout, // 0
+            this.arrFaultTravel, //5
+            this.arrFaultFlameout, //6
+            this.arrTravel, // 1
+            this.arrAbnormal, //2
+            this.arrChargeFlameout, //3
+            this.arrChargeTravel //4
+          );
+          this.$store.dispatch("GetArr", {
+            arrAll: this.arrAll, // 7
+            arrFlameout: this.arrFlameout, // 0
+            arrChargeFlameout: this.arrChargeFlameout, // 3
+            arrChargeTravel: this.arrChargeTravel, //4
+            arrTravel: this.arrTravel, // 1
+            arrAbnormal: this.arrAbnormal, // 2
+            arrFaultTravel: this.arrFaultTravel, //5
+            arrFaultFlameout: this.arrFaultFlameout //6
+          });
+        })
+        .catch(err => {
+          console.log(err);
+        });
+    }
+  }
+};
+</script>
+
+<style rel="stylesheet/scss" lang="scss" scoped>
+.car-control {
+  .switch {
+    position: absolute;
+    width: 200px;
+    height: 80px;
+    padding: 10px;
+    bottom: 20px;
+    right: 20px;
+    background: #fff;
+    &-aggregation,
+    &-heat {
+      z-index: 1000;
+      &:hover {
+        img {
+          border: 1px solid #1890ff;
+        }
+      }
+    }
+  }
+}
+</style>

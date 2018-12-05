@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>吉利RMS</title>
+</head>
+
+<body>
+  <div id="app"></div>
+  <!-- built files will be auto injected -->
+  <script src="http://webapi.amap.com/maps?v=1.4.2&key=8c8d08e4eaa0ac902c975c319fba506d&plugin=AMap.Geocoder,AMap.MarkerClusterer,AMap.CircleEditor,AMap.RectangleEditor,AMap.PolyEditor,AMap.DistrictSearch,AMap.Heatmap"></script>
+
+  <script>
+    function setFontSize() {
+      //获取html元素
+      var html = document.getElementsByTagName('html')[0];
+      //屏幕的宽度（兼容处理）
+      var w = document.documentElement.clientWidth || document.body.clientWidth;
+      // var h = document.documentElement.clientHeight || document.body.clientHeight;
+      //750这个数字是根据你的设计图的实际大小来的，所以值具体根据设计图的大小
+      html.style.fontSize = w / 120 + "px";
+    }
+    setFontSize();
+  </script>
+</body>
+
+</html>
